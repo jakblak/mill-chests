@@ -1,6 +1,27 @@
+'use client'
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import Image from "next/image";
 
 const NUMBER_OF_CHESTS = 100;
+
+function Chest({ index }: { index: number }) {
+  const openChest = useMutation(api.chests.openChest);
+  const chest = useQuery(api.chests.getChest, {index});
+  const isOpen = chest?.isOpen;
+  return (
+    <button
+      key={index}
+      disabled={isOpen}
+      className="btn w-24 h-24 flex items-center justify-center"
+      onClick={() => {
+        openChest({ index });
+      }}
+    >
+      { isOpen ? <img src="/chest-empty.png" /> : <img src="/chest.png" /> }
+    </button>
+  );
+}
 
 export default function Home() {
   return (
@@ -9,11 +30,7 @@ export default function Home() {
       <p className="text-2xl mb-4">{1} of 1,000,000 chests opened</p>
       <div className="flex flex-wrap gap-1">
         {new Array(NUMBER_OF_CHESTS).fill(null).map((_, index) => (
-          <button 
-            key={index} 
-            className="btn w-24 h-24 flex items-center justify-center">
-            <img src="/chest.png" />
-          </button>
+          <Chest index={index} key={index} />
         ))}
       </div>
     </main>
