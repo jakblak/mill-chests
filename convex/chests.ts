@@ -1,39 +1,49 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+export const BITS_IN_PARTITION = 32;
+
 export const openChest = mutation({
   args: {
     index: v.number(),
   },
   async handler(ctx, args) {
-    const chest = await ctx.db
+    const partition = Math.floor(args.index / BITS_IN_PARTITION);
+
+    const chestPartition = await ctx.db
       .query("chests")
-      .withIndex("by_index", (q) => q.eq("index", args.index))
+      .withIndex("by_partition", (q) => q.eq("partition", partition))
       .first();
 
-    if (chest) {
-      return;
+    if (!chestPartition) {
+      await ctx.db.insert("chests", {
+        partition,
+        bitset: 1 << args.index % BITS_IN_PARTITION,
+      });
+    } else {
+      chestPartition.bitset |= 1 << args.index % BITS_IN_PARTITION;
+      await ctx.db.patch(chestPartition._id, {
+        bitset: chestPartition.bitset,
+      });
     }
-
-    await ctx.db.insert("chests", {
-      index: args.index,
-      isOpen: true,
-    });
-  },
+    const sumRecord = await ctx.db.query("sums").first();
+    sumRecord!.value++;
+    await ctx.db.patch(sumRecord!._id, { value: sumRecord!.value });
+  }
 });
 
-export const getChest = query({
+export const getChestPartition = query({
   args: {
-    index: v.number(),
+    partition: v.number(),
   },
   async handler(ctx, args) {
-    const chest = await ctx.db
+    const chestPartition = await ctx.db
       .query("chests")
-      .withIndex("by_index", (q) => q.eq("index", args.index))
+      .withIndex("by_partition", (q) => q.eq("partition", args.partition))
       .first();
-    if (!chest) {
+    if (!chestPartition) {
       return null;
     }
-    return chest;
+    return chestPartition;
   },
 });

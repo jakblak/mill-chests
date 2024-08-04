@@ -3,7 +3,10 @@ import { v } from "convex/values";
 
 export default defineSchema({
   chests: defineTable({
-    index: v.number(),
-    isOpen: v.boolean(),
-  }).index("by_index", ["index"]),
+    partition: v.number(),
+    bitset: v.number(),
+  }).index("by_partition", ["partition"]),
+  sums: defineTable({
+    value: v.number(),
+  })
 });
