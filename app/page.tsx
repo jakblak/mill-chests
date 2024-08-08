@@ -4,6 +4,9 @@ import { BITS_IN_PARTITION } from "@/convex/chests";
 import { useMutation, useQuery } from "convex/react";
 import { FixedSizeGrid as Grid } from "react-window";
 import { useMeasure } from "react-use";
+import { determineLoot } from "@/constants";
+import { useState } from "react";
+import { LootItem } from "@/types";
 
 const NUMBER_OF_CHESTS = 1_000_000;
 const ROW_HEIGHT = 100;
@@ -24,12 +27,25 @@ function Chest({ rowIndex,
   }) {
   const index = rowIndex * data.columnCount + columnIndex;
   const openChest = useMutation(api.chests.openChest);
+  const getLoot = useMutation(api.loot.getLoot);
+  const [loot, setLoot] = useState<LootItem | null>(null);
   const chestPartition = useQuery(api.chests.getChestPartition, {
     partition: Math.floor(index / BITS_IN_PARTITION),
   });
 
   const bit = 1 << index % BITS_IN_PARTITION;
   const isOpen = chestPartition ? (chestPartition.bitset & bit) !== 0 : false;
+
+  const handleOpenChest = async () => {
+    const lootRarity = determineLoot(index);
+    if (lootRarity) {
+      const lootItem = await getLoot({ rarity: lootRarity, chestIndex: index });
+      await openChest({ index });
+      setLoot(lootItem);
+    } else {
+      await openChest({ index });
+    }
+  };
 
   if (index >= NUMBER_OF_CHESTS) {
     return null;
@@ -40,14 +56,21 @@ function Chest({ rowIndex,
     key={index}
     disabled={isOpen}
     className="btn w-24 h-24 flex items-center justify-center"
-    onClick={() => {
-      openChest({ index });
-    }}
+    onClick={handleOpenChest}
   >
-    {isOpen ? <img src="/chest-empty.png" /> : <img src="/chest.png" />}
+    {isOpen ? (
+      loot ? (
+        <div className="text-xs">
+          {loot.rarity}: {loot.name}
+        </div>
+      ) : (
+        <img src="/chest-empty.png" alt="Empty chest" />
+      )
+    ) : (
+      <img src="/chest.png" alt="Closed chest" />
+    )}
   </button>
   </div>
-    
   );
 }
 

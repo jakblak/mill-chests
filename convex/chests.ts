@@ -26,9 +26,12 @@ export const openChest = mutation({
         bitset: chestPartition.bitset,
       });
     }
+    // Update the sum
     const sumRecord = await ctx.db.query("sums").first();
-    sumRecord!.value++;
-    await ctx.db.patch(sumRecord!._id, { value: sumRecord!.value });
+    if (sumRecord) {
+      await ctx.db.patch(sumRecord._id, { value: sumRecord.value + 1 });
+    }
+
   }
 });
 
